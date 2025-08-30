@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator - Tạo Hình Ảnh Từ Văn Bản</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .image-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .image-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .btn-gradient {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .generated-image {
+            transition: all 0.5s ease;
+        }
+        
+        .generated-image.loading {
+            filter: blur(20px);
+            opacity: 0.7;
+        }
+        
+        .generated-image.loaded {
+            filter: blur(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="min-h-screen py-8 px-4">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-12 fade-in">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                🎨 AI Image Generator
+            </h1>
+            <p class="text-xl text-white opacity-90">
+                Biến ý tưởng của bạn thành hình ảnh với trí tuệ nhân tạo
+            </p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <!-- Input Section -->
+            <div class="glass-effect p-8 fade-in">
+                <h2 class="text-2xl font-semibold text-white mb-6">Tạo Hình Ảnh Mới</h2>
+                
+                <form id="imageForm" class="space-y-6">
+                    <div>
+                        <label class="block text-white mb-2 font-medium">Mô tả hình ảnh</label>
+                        <textarea 
+                            id="promptInput"
+                            class="w-full p-4 rounded-lg bg-white bg-opacity-10 text-white placeholder-white placeholder-opacity-70 border border-white border-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+                            placeholder="Ví dụ: Phong cảnh núi non hùng vĩ với hoàng hôn vàng rực rỡ, phong cách tranh sơn dầu..."
+                            rows="4"
+                            required
+                        ></textarea>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-white mb-2 font-medium">Phong cách</label>
+                            <select id="styleSelect" class="w-full p-3 rounded-lg bg-white bg-opacity-10 text-white border border-white border-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                                <option value="realistic">Chân thực</option>
+                                <option value="artistic">Nghệ thuật</option>
+                                <option value="anime">Anime</option>
+                                <option value="oil-painting">Tranh sơn dầu</option>
+                                <option value="digital-art">Nghệ thuật số</option>
+                                <option value="3d">3D</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-white mb-2 font-medium">Tỷ lệ</label>
+                            <select id="ratioSelect" class="w-full p-3 rounded-lg bg-white bg-opacity-10 text-white border border-white border-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                                <option value="1:1">Vuông (1:1)</option>
+                                <option value="16:9">Landscape (16:9)</option>
+                                <option value="9:16">Portrait (9:16)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-white mb-2 font-medium">Tông màu</label>
+                            <select id="colorSelect" class="w-full p-3 rounded-lg bg-white bg-opacity-10 text-white border border-white border-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                                <option value="warm">Ấm áp</option>
+                                <option value="cool">Mát mẻ</option>
+                                <option value="pastel">Pastel</option>
+                                <option value="vibrant">Rực rỡ</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-white mb-2 font-medium">Chất lượng</label>
+                            <select id="qualitySelect" class="w-full p-3 rounded-lg bg-white bg-opacity-10 text-white border border-white border-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                                <option value="standard">Tiêu chuẩn</option>
+                                <option value="hd">HD</option>
+                                <option value="ultra-hd">Ultra HD</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button 
+                        type="submit" 
+                        class="w-full btn-gradient text-white py-3 px-6 rounded-lg font-semibold text-lg flex items-center justify-center"
+                        id="generateBtn"
+                    >
+                        <span>Tạo Hình Ảnh</span>
+                        <div class="loading-spinner ml-3 hidden" id="loadingSpinner"></div>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Preview Section -->
+            <div class="glass-effect p-8 fade-in">
+                <h2 class="text-2xl font-semibold text-white mb-6">Xem Trước</h2>
+                
+                <div class="relative group" id="previewContainer">
+                    <div class="aspect-w-16 aspect-h-9 bg-black bg-opacity-20 rounded-lg overflow-hidden">
+                        <img 
+                            src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/ee35de64-b6ab-41e1-b150-8daae470c827.png" 
+                            alt="Khung cảnh preview hình ảnh AI sẽ được tạo ra từ mô tả văn bản với các tùy chọn phong cách và màu sắc đã chọn"
+                            class="w-full h-full object-cover transition-all duration-500 group-hover:scale-105 generated-image loaded"
+                            id="previewImage"
+                            onerror="this.style.display='none'; document.getElementById('placeholderText').style.display='flex'"
+                        />
+                        <div 
+                            id="placeholderText" 
+                            class="absolute inset-0 flex items-center justify-center text-white opacity-70"
+                        >
+                            <div class="text-center">
+                                <div class="text-6xl mb-2">🎨</div>
+                                <p>Nhập mô tả và tạo hình ảnh</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 flex gap-3" id="actionButtons" style="display: none;">
+                        <button class="flex-1 bg-white bg-opacity-20 text-white py-2 px-4 rounded-lg hover:bg-opacity-30 transition-all" onclick="downloadImage()">
+                            Tải Xuống
+                        </button>
+                        <button class="flex-1 bg-white bg-opacity-20 text-white py-2 px-4 rounded-lg hover:bg-opacity-30 transition-all" onclick="shareImage()">
+                            Chia Sẻ
+                        </button>
+                        <button class="flex-1 bg-white bg-opacity-20 text-white py-2 px-4 rounded-lg hover:bg-opacity-30 transition-all" onclick="regenerateImage()">
+                            Tạo Lại
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Gallery Section -->
+        <section class="glass-effect p-8 fade-in">
+            <h2 class="text-2xl font-semibold text-white mb-6">Hình Ảnh Mẫu</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="gallery">
+                <!-- Sample Image 1 -->
+                <div class="image-card glass-effect overflow-hidden">
+                    <div class="aspect-w-16 aspect-h-9">
+                        <img 
+                            src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/0a4de988-255c-449f-adc8-16e673836c88.png" 
+                            alt="Phong cảnh núi non hùng vĩ với hoàng hôn vàng rực rỡ và bầu trời đầy mây trong phong cách tranh sơn dầu ấn tượng"
+                            class="w-full h-full object-cover"
+                            onerror="this.style.opacity='0.5'"
+                        />
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-white font-semibold mb-2">Núi Non Hoàng Hôn</h3>
+                        <p class="text-white text-opacity-80 text-sm">Phong cách: Tranh sơn dầu</p>
+                    </div>
+                </div>
+
+                <!-- Sample Image 2 -->
+                <div class="image-card glass-effect overflow-hidden">
+                    <div class="aspect-w-16 aspect-h-9">
+                        <img 
+                            src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/f88902b4-170a-4faf-bc6c-e016bc04a0ac.png" 
+                            alt="Thành phố tương lai với kiến trúc hiện đại, ánh đèn neon xanh tím và phương tiện bay trong khung cảnh đêm 3D sống động"
+                            class="w-full h-full object-cover"
+                            onerror="this.style.opacity='0.5'"
+                        />
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-white font-semibold mb-2">Thành Phố Tương Lai</h3>
+                        <p class="text-white text-opacity-80 text-sm">Phong cách: 3D Neon</p>
+                    </div>
+                </div>
+
+                <!-- Sample Image 3 -->
+                <div class="image-card glass-effect overflow-hidden">
+                    <div class="aspect-w-16 aspect-h-9">
+                        <img 
+                            src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/04aba939-75da-47ea-818b-71aba9ccd46e.png" 
+                            alt="Rừng nguyên sinh với cây cổ thụ và ánh sáng mặt trời xuyên qua tán lá tạo hiệu ứng quang học đẹp mắt trong phong cách nhiếp ảnh chân thực"
+                            class="w-full h-full object-cover"
+                            onerror="this.style.opacity='0.5'"
+                        />
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-white font-semibold mb-2">Rừng Nguyên Sinh</h3>
+                        <p class="text-white text-opacity-80 text-sm">Phong cách: Chân thực</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="glass-effect p-8 mt-8 fade-in">
+            <h2 class="text-2xl font-semibold text-white mb-8 text-center">Tính Năng Nổi Bật</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="text-center p-6 bg-white bg-opacity-10 rounded-lg">
+                    <div class="text-4xl mb-4">⚡</div>
+                    <h3 class="text-white font-semibold mb-2">Tạo Nhanh Chóng</h3>
+                    <p class="text-white text-opacity-80">Tạo hình ảnh chỉ trong vài giây với công nghệ AI tiên tiến</p>
+                </div>
+                
+                <div class="text-center p-6 bg-white bg-opacity-10 rounded-lg">
+                    <div class="text-4xl mb-4">🎨</div>
+                    <h3 class="text-white font-semibold mb-2">Đa Dạng Phong Cách</h3>
+                    <p class="text-white text-opacity-80">Hỗ trợ nhiều phong cách nghệ thuật từ chân thực đến hoạt hình</p>
+                </div>
+                
+                <div class="text-center p-6 bg-white bg-opacity-10 rounded-lg">
+                    <div class="text-4xl mb-4">📱</div>
+                    <h3 class="text-white font-semibold mb-2">Responsive</h3>
+                    <p class="text-white text-opacity-80">Tương thích hoàn hảo với mọi thiết bị di động và desktop</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center mt-12 text-white opacity-80">
+        <p>© 2024 AI Image Generator. Tạo hình ảnh từ trí tưởng tượng của bạn.</p>
+    </footer>
+
+    <script>
+        // Database of placeholder images for different styles
+        const imageDatabase = {
+            'realistic': [
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/8f5ed809-c78c-495c-ac89-6e3f09e9b349.png',
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/cdc3eadd-c0c5-4ee6-97d4-879b76aac281.png'
+            ],
+            'artistic': [
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/503b8391-8fb0-41d6-a0b7-781d70e0abe0.png',
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a8773c60-cb41-4962-ae1e-64ebee8fcd2a.png'
+            ],
+            'anime': [
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/4317e73a-e139-4d3a-829a-1fad7e4928ad.png',
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/3bdefffb-4734-4d6d-9812-45fb1f7b3771.png'
+            ],
+            'oil-painting': [
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/0c4fb631-7876-4ee1-bbf9-95da41130c97.png',
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/68f43e57-3874-416d-8dd4-e933ed1c0ce8.png'
+            ],
+            'digital-art': [
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/275f62a9-5ac4-4320-b00c-0e87d5ff1af8.png',
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/31c2b38e-7eb3-4ecf-9f5c-8ac34ef7d46e.png'
+            ],
+            '3d': [
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/26fe54e1-d1eb-42de-9319-95fdb7978086.png',
+                'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/dc835e54-be7e-4c55-82a8-83a7c132cacb.png'
+            ]
+        };
+
+        let currentGeneratedImage = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('imageForm');
+            const generateBtn = document.getElementById('generateBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const previewImage = document.getElementById('previewImage');
+            const promptInput = document.getElementById('promptInput');
+            const placeholderText = document.getElementById('placeholderText');
+            const actionButtons = document.getElementById('actionButtons');
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const prompt = promptInput.value.trim();
+                if (!prompt) {
+                    showNotification('⚠️ Vui lòng nhập mô tả hình ảnh!');
+                    return;
+                }
+                
+                // Show loading
+                generateBtn.disabled = true;
+                loadingSpinner.classList.remove('hidden');
+                previewImage.classList.remove('loaded');
+                previewImage.classList.add('loading');
+                placeholderText.style.display = 'none';
+                previewImage.style.display = 'block';
+                
+                // Get selected options
+                const style = document.getElementById('styleSelect').value;
+                const ratio = document.getElementById('ratioSelect').value;
+                
+                // Simulate AI processing
+                setTimeout(() => {
+                    // Generate a random image based on style
+                    const styleImages = imageDatabase[style] || imageDatabase['realistic'];
+                    const randomImage = styleImages[Math.floor(Math.random() * styleImages.length)];
+                    
+                    // Create a unique image URL with prompt text
+                    const promptSlug = prompt.substring(0, 30).replace(/\s+/g, '+');
+                    const dimensions = ratio === '1:1' ? '600x600' : ratio === '16:9' ? '800x450' : '450x800';
+                    
+                    const newImageUrl = `${randomImage.split('?')[0]}?text=${encodeURIComponent(promptSlug)}&dummy=${Date.now()}`;
+                    
+                    // Preload image
+                    const img = new Image();
+                    img.onload = function() {
+                        previewImage.src = newImageUrl;
+                        previewImage.alt = prompt;
+                        previewImage.classList.remove('loading');
+                        previewImage.classList.add('loaded');
+                        
+                        // Show action buttons
+                        actionButtons.style.display = 'flex';
+                        
+                        // Store current generated image
+                        currentGeneratedImage = {
+                            url: newImageUrl,
+                            prompt: prompt,
+                            style: style,
+                            ratio: ratio
+                        };
+                        
+                        // Add to gallery
+                        addToGallery(newImageUrl, prompt, style);
+                        
+                        // Hide loading
+                        generateBtn.disabled = false;
+                        loadingSpinner.classList.add('hidden');
+                        
+                        // Show success message
+                        showNotification('✅ Hình ảnh đã được tạo thành công!');
+                    };
+                    img.src = newImageUrl;
+                    
+                }, 2000 + Math.random() * 1000); // Random delay between 2-3 seconds
+            });
+            
+            function addToGallery(imageUrl, prompt, style) {
+                const gallery = document.getElementById('gallery');
+                const styleNames = {
+                    'realistic': 'Chân thực',
+                    'artistic': 'Nghệ thuật',
+                    'anime': 'Anime',
+                    'oil-painting': 'Tranh sơn dầu',
+                    'digital-art': 'Nghệ thuật số',
+                    '3d': '3D'
+                };
+                
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'image-card glass-effect overflow-hidden';
+                galleryItem.innerHTML = `
+                    <div class="aspect-w-16 aspect-h-9">
+                        <img 
+                            src="${imageUrl}" 
+                            alt="${prompt}"
+                            class="w-full h-full object-cover"
+                            onerror="this.style.opacity='0.5'"
+                        />
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-white font-semibold mb-2">${prompt.substring(0, 20)}${prompt.length > 20 ? '...' : ''}</h3>
+                        <p class="text-white text-opacity-80 text-sm">Phong cách: ${styleNames[style]}</p>
+                    </div>
+                `;
+                
+                // Add to beginning of gallery
+                gallery.insertBefore(galleryItem, gallery.firstChild);
+                
+                // Limit gallery to 6 items
+                if (gallery.children.length > 6) {
+                    gallery.removeChild(gallery.lastChild);
+                }
+            }
+        });
+        
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 glass-effect px-6 py-3 text-white font-semibold rounded-lg shadow-lg transform transition-all duration-300 opacity-0 translate-y-4 z-50';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.classList.add('opacity-100');
+                notification.classList.remove('translate-y-4');
+            }, 100);
+            
+            // Animate out and remove
+            setTimeout(() => {
+                notification.classList.remove('opacity-100');
+                notification.classList.add('translate-y-4');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        function downloadImage() {
+            if (!currentGeneratedImage) {
+                showNotification('⚠️ Chưa có hình ảnh để tải xuống!');
+                return;
+            }
+            
+            // Tạo một thẻ a ẩn để tải ảnh về
+            const link = document.createElement('a');
+            link.href = currentGeneratedImage.url;
+            
+            // Tạo tên file từ prompt (loại bỏ ký tự đặc biệt)
+            const fileName = currentGeneratedImage.prompt
+                .substring(0, 30)
+                .replace(/[^a-zA-Z0-9\u00C0-\u1EF9\s]/g, '')
+                .replace(/\s+/g, '-')
+                .toLowerCase() || 'ai-image';
+            
+            link.download = `${fileName}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showNotification('✅ Đang tải hình ảnh xuống...');
+        }
+        
+        function shareImage() {
+            if (!currentGeneratedImage) {
+                showNotification('⚠️ Chưa có hình ảnh để chia sẻ!');
+                return;
+            }
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Hình ảnh AI của tôi',
+                    text: currentGeneratedImage.prompt,
+                    url: window.location.href
+                })
+                .then(() => showNotification('✅ Chia sẻ thành công!'))
+                .catch(() => showNotification('❌ Chia sẻ thất bại!'));
+            } else {
+                // Sao chép prompt vào clipboard
+                navigator.clipboard.writeText(currentGeneratedImage.prompt)
+                    .then(() => showNotification('📋 Đã sao chép mô tả vào clipboard!'))
+                    .catch(() => showNotification('❌ Không thể sao chép!'));
+            }
+        }
+        
+        function regenerateImage() {
+            if (!currentGeneratedImage) {
+                showNotification('⚠️ Chưa có hình ảnh để tạo lại!');
+                return;
+            }
+            
+            document.getElementById('imageForm').dispatchEvent(new Event('submit'));
+        }
+        
+        // Add some interactive effects to image cards
+        const imageCards = document.querySelectorAll('.image-card');
+        imageCards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-5px)';
+                card.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+                card.style.boxShadow = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
